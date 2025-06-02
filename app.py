@@ -202,7 +202,7 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
             if is_video:
                 cmd = [
                     'ffmpeg', '-i', abs_path,
-                    '-ss', '00:00:01.000', '-vframes', '1',
+                    '-ss', '00:00:00.000', '-vframes', '1',
                     '-vf', 'scale=200:-1',
                     thumbnail_path
                 ]
