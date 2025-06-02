@@ -134,6 +134,11 @@
                                                     <i class="fas fa-film video-metadata-icon"></i> {{ item.video_metadata.framerate }}
                                                 </span>
                                                 {% endif %}
+                                                {% if item.video_metadata.creation_time %}
+                                                <span class="video-metadata-item" title="Creation time">
+                                                    <i class="fas fa-film video-metadata-icon"></i> {{ item.video_metadata.creation_time }}
+                                                </span>
+                                                {% endif %}
                                             </div>
                                             {% endif %}
 

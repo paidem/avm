@@ -127,7 +127,8 @@ def get_video_metadata(file_path):
         metadata = {
             'duration': None,
             'codec': None,
-            'framerate': None
+            'framerate': None,
+            'creation_time': None
         }
 
         # Find video stream
@@ -165,6 +166,18 @@ def get_video_metadata(file_path):
                             metadata['framerate'] = f"{fps} fps"
                     except (ValueError, ZeroDivisionError):
                         pass
+            
+            if 'tags' in video_stream:
+                if 'creation_time' in video_stream['tags']:
+                    date_str = video_stream['tags']['creation_time']
+                    dt_utc = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    local_tz = tzlocal.get_localzone()
+                    dt_local = dt_utc.astimezone(local_tz)
+                    tz_offset_hours = dt_local.utcoffset().total_seconds() / 3600
+                    tz_sign = '+' if tz_offset_hours >= 0 else '-'
+                    tz_hours = abs(int(tz_offset_hours))
+                    formatted_date = dt_local.strftime("%Y-%m-%d %H:%M") + f" (GMT{tz_sign}{tz_hours})"
+                    metadata['creation_time'] = formatted_date
 
         return metadata
 
@@ -173,7 +186,8 @@ def get_video_metadata(file_path):
         return {
             'duration': None,
             'codec': None,
-            'framerate': None
+            'framerate': None,
+            'creation_time': None
         }
 
 
@@ -287,7 +301,8 @@ def browse(subpath=''):
                 'video_metadata': {
                     'duration': None,
                     'codec': None,
-                    'framerate': None
+                    'framerate': None,
+                    'creation_time': None
                 }
             }
 
