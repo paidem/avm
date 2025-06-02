@@ -444,7 +444,7 @@ def execute_command():
                 counter += 1
 
             # Build merge command (modify with your actual merge command)
-            cmd = ['merge_mp4', '-o', output_file] + full_paths
+            cmd = ['mp4_merge'] + full_paths + ['--out', output_file]
 
             # Create source tracking file
             source_file = output_file + '.source'
