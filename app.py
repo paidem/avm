@@ -1,0 +1,454 @@
+import os
+import subprocess
+import time
+import datetime
+import hashlib
+import secrets
+import uuid
+import json
+from flask import Flask, render_template, jsonify, request, abort, send_file, Response, session, redirect, url_for, \
+    make_response
+
+app = Flask(__name__, static_folder='static')
+# Set a secret key for session management
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Get base_dir from environment variable or use default
+base_dir = os.environ.get('MEDIA_BASE_DIR', '/media')
+thumbnails_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/thumbnails')
+
+# Admin password from environment variable
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
+
+# Session expiry - 30 days (in seconds)
+SESSION_EXPIRY = 60 * 60 * 24 * 30
+
+# Session storage - simple in-memory dict
+# In production, consider using Redis or another persistent store
+active_sessions = {}
+
+# Files to filter out (hidden files and system files) from env var
+default_filtered = ['.DS_Store', '.Thumbs.db', '._.Trashes', '.Spotlight-V100',
+                    '.fseventsd', '.Trashes', '@eaDir', 'desktop.ini', 'thumbs.db']
+filtered_from_env = os.environ.get('FILTERED_FILES', '')
+if filtered_from_env:
+    FILTERED_FILES = filtered_from_env.split(',')
+else:
+    FILTERED_FILES = default_filtered
+
+# File extensions to hide from env var
+hidden_from_env = os.environ.get('HIDDEN_EXTENSIONS', '')
+if hidden_from_env:
+    HIDDEN_EXTENSIONS = hidden_from_env.split(',')
+else:
+    HIDDEN_EXTENSIONS = []
+
+# Ensure thumbnails directory exists
+os.makedirs(thumbnails_base_dir, exist_ok=True)
+
+
+def check_auth():
+    """Check if the current user is authenticated"""
+    session_id = request.cookies.get('session_id')
+    if session_id and session_id in active_sessions:
+        # Check if session is still valid
+        if active_sessions[session_id]['expires'] > time.time():
+            # Update expiry time on access
+            active_sessions[session_id]['expires'] = time.time() + SESSION_EXPIRY
+            return True
+    return False
+
+
+def auth_required(f):
+    """Decorator to require authentication for a route"""
+
+    def decorated(*args, **kwargs):
+        if not check_auth():
+            return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+
+    decorated.__name__ = f.__name__
+    return decorated
+
+
+@app.route('/')
+def root():
+    # Redirect to browse
+    return redirect(url_for('browse'))
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    password = request.form.get('password')
+    if password == ADMIN_PASSWORD:
+        # Create a new session
+        session_id = str(uuid.uuid4())
+        active_sessions[session_id] = {
+            'created': time.time(),
+            'expires': time.time() + SESSION_EXPIRY
+        }
+
+        # Set cookie and return success
+        response = make_response(jsonify({'status': 'success', 'message': 'Login successful'}))
+        response.set_cookie('session_id', session_id, max_age=SESSION_EXPIRY, httponly=True,
+                            samesite='Strict', secure=request.is_secure)
+        return response
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid password'}), 401
+
+
+@app.route('/logout')
+def logout():
+    session_id = request.cookies.get('session_id')
+    if session_id and session_id in active_sessions:
+        # Remove session
+        active_sessions.pop(session_id, None)
+
+    # Clear cookie
+    response = make_response(jsonify({'status': 'success', 'message': 'Logged out successfully'}))
+    response.delete_cookie('session_id')
+    return response
+
+
+def get_video_metadata(file_path):
+    """Get video metadata like duration, codec and framerate using ffprobe"""
+    try:
+        # Use ffprobe to get video information
+        cmd = [
+            'ffprobe', '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_format', '-show_streams',
+            file_path
+        ]
+
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        data = json.loads(result.stdout)
+
+        metadata = {
+            'duration': None,
+            'codec': None,
+            'framerate': None
+        }
+
+        # Find video stream
+        video_stream = None
+        for stream in data.get('streams', []):
+            if stream.get('codec_type') == 'video':
+                video_stream = stream
+                break
+
+        if video_stream:
+            # Get duration
+            if 'duration' in video_stream:
+                duration_secs = float(video_stream['duration'])
+                minutes = int(duration_secs // 60)
+                seconds = int(duration_secs % 60)
+                metadata['duration'] = f"{minutes}:{seconds:02d}"
+            elif 'duration' in data.get('format', {}):
+                duration_secs = float(data['format']['duration'])
+                minutes = int(duration_secs // 60)
+                seconds = int(duration_secs % 60)
+                metadata['duration'] = f"{minutes}:{seconds:02d}"
+
+            # Get codec
+            if 'codec_name' in video_stream:
+                metadata['codec'] = video_stream['codec_name']
+
+            # Get framerate
+            if 'avg_frame_rate' in video_stream:
+                framerate = video_stream['avg_frame_rate']
+                if framerate and framerate != '0/0':
+                    try:
+                        num, den = map(int, framerate.split('/'))
+                        if den != 0:  # Avoid division by zero
+                            fps = round(num / den, 2)
+                            metadata['framerate'] = f"{fps} fps"
+                    except (ValueError, ZeroDivisionError):
+                        pass
+
+        return metadata
+
+    except Exception as e:
+        print(f"Error getting video metadata: {e}")
+        return {
+            'duration': None,
+            'codec': None,
+            'framerate': None
+        }
+
+
+def get_file_info(full_path):
+    """Get size and modification date of a file"""
+    stats = os.stat(full_path)
+    size = stats.st_size
+
+    # Format size for display
+    if size < 1024:
+        size_str = f"{size} bytes"
+    elif size < 1024 * 1024:
+        size_str = f"{size / 1024:.1f} KB"
+    elif size < 1024 * 1024 * 1024:
+        size_str = f"{size / (1024 * 1024):.1f} MB"
+    else:
+        size_str = f"{size / (1024 * 1024 * 1024):.1f} GB"
+
+    modified = datetime.datetime.fromtimestamp(stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+
+    return {
+        'size': size_str,
+        'modified': modified,
+        'raw_size': size
+    }
+
+
+def get_source_info(file_path):
+    """Get source info for merged files"""
+    source_path = file_path + '.source'
+    if os.path.exists(source_path):
+        try:
+            with open(source_path, 'r') as f:
+                sources = f.read().splitlines()
+            return sources
+        except Exception as e:
+            print(f"Error reading source file: {e}")
+    return None
+
+
+def get_thumbnail_path(file_path, abs_path, is_video=True):
+    """Generate a thumbnail path for a video or image file"""
+    file_hash = hashlib.md5(file_path.encode()).hexdigest()
+    thumbnail_dir = os.path.join(thumbnails_base_dir, file_hash[:2])
+    os.makedirs(thumbnail_dir, exist_ok=True)
+    thumbnail_path = os.path.join(thumbnail_dir, f"{file_hash}.jpg")
+
+    # Generate thumbnail if it doesn't exist
+    if not os.path.exists(thumbnail_path):
+        try:
+            if is_video:
+                cmd = [
+                    'ffmpeg', '-i', abs_path,
+                    '-ss', '00:00:01.000', '-vframes', '1',
+                    '-vf', 'scale=200:-1',
+                    thumbnail_path
+                ]
+                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            elif is_video is False:  # For images
+                cmd = [
+                    'ffmpeg', '-i', abs_path,
+                    '-vf', 'scale=200:-1',
+                    thumbnail_path
+                ]
+                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Audio has no thumbnail generation - will use default icon
+        except Exception as e:
+            print(f"Error generating thumbnail: {e}")
+            return None
+
+    return f"/static/thumbnails/{file_hash[:2]}/{file_hash}.jpg"
+
+
+@app.route('/browse/')
+@app.route('/browse/<path:subpath>')
+def browse(subpath=''):
+    full_path = os.path.join(base_dir, subpath)
+
+    # Security check
+    if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
+        abort(403)
+
+    # Check if user is authenticated
+    is_authenticated = check_auth()
+
+    items = []
+    try:
+        for name in os.listdir(full_path):
+            # Skip filtered files
+            if name in FILTERED_FILES or name.startswith('.'):
+                continue
+
+            # Check extension filtering
+            ext = os.path.splitext(name)[1].lower()
+            if ext and ext[1:] in HIDDEN_EXTENSIONS:  # Skip the dot in extension
+                continue
+
+            item_path = os.path.join(subpath, name) if subpath else name
+            abs_path = os.path.join(full_path, name)
+            is_dir = os.path.isdir(abs_path)
+
+            item = {
+                'name': name,
+                'path': item_path,
+                'is_dir': is_dir,
+                'thumbnail': None,
+                'is_video': False,
+                'is_image': False,
+                'is_audio': False,
+                'source_files': None,
+                'video_metadata': {
+                    'duration': None,
+                    'codec': None,
+                    'framerate': None
+                }
+            }
+
+            # Get file info if it's not a directory
+            if not is_dir:
+                item.update(get_file_info(abs_path))
+
+                # Check file type
+                extension = os.path.splitext(name)[1].lower()
+                if extension in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+                    item['is_video'] = True
+                    item['thumbnail'] = get_thumbnail_path(item_path, abs_path, is_video=True)
+                    item['video_metadata'] = get_video_metadata(abs_path)
+
+                    # Check if it's a merged file
+                    if 'joined' in name or 'merged' in name:
+                        item['source_files'] = get_source_info(abs_path)
+
+                elif extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                    item['is_image'] = True
+                    item['thumbnail'] = get_thumbnail_path(item_path, abs_path, is_video=False)
+                elif extension in ['.mp3', '.wav', '.ogg', '.aac', '.flac']:
+                    item['is_audio'] = True
+                    # Audio files don't get thumbnails but use a special icon
+
+            items.append(item)
+    except PermissionError:
+        return render_template('error.html', message="Permission denied: Cannot access directory"), 403
+    except FileNotFoundError:
+        return render_template('error.html', message="Directory not found"), 404
+    except Exception as e:
+        return render_template('error.html', message=f"Error: {str(e)}"), 500
+
+    # Sort: directories first, then by name
+    items.sort(key=lambda item: (not item['is_dir'], item['name'].lower()))
+
+    # Prepare breadcrumbs
+    breadcrumbs = []
+    current = ''
+    parts = subpath.split('/') if subpath else []
+
+    breadcrumbs.append({'name': 'Home', 'path': ''})
+    for part in parts:
+        if part:
+            current = os.path.join(current, part) if current else part
+            breadcrumbs.append({'name': part, 'path': current})
+
+    return render_template('browser.html',
+                           items=items,
+                           current_path=subpath,
+                           breadcrumbs=breadcrumbs,
+                           is_authenticated=is_authenticated)
+
+
+@app.route('/download/<path:file_path>')
+def download_file(file_path):
+    full_path = os.path.join(base_dir, file_path)
+
+    # Security check
+    if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
+        abort(403)
+
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        abort(404)
+
+    return send_file(full_path, as_attachment=True)
+
+
+@app.route('/view/<path:file_path>')
+def view_file(file_path):
+    full_path = os.path.join(base_dir, file_path)
+
+    # Security check
+    if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
+        abort(403)
+
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        abort(404)
+
+    # Stream the file content
+    return send_file(full_path)
+
+
+@app.route('/api/execute', methods=['POST'])
+@auth_required
+def execute_command():
+    data = request.json
+    try:
+        # Validate all file paths
+        full_paths = []
+        for rel_path in data['files']:
+            abs_path = os.path.abspath(os.path.join(base_dir, rel_path))
+
+            # Security check
+            if not abs_path.startswith(base_dir):
+                return jsonify({'status': 'error', 'message': 'Invalid path'}), 403
+
+            full_paths.append(abs_path)
+
+        if data['command'] == 'merge':
+            if not full_paths:
+                return jsonify({'status': 'error', 'message': 'No files selected'}), 400
+
+            # Get first file's directory and name components
+            first_file = full_paths[0]
+            output_dir = os.path.dirname(first_file)
+            original_name = os.path.basename(first_file)
+            base_name, extension = os.path.splitext(original_name)
+
+            # Create new filename pattern: FILE1_3_joined.MP4
+            new_name = f"{base_name}_{len(full_paths)}_joined{extension}"
+            output_file = os.path.join(output_dir, new_name)
+
+            # Ensure unique filename
+            counter = 1
+            while os.path.exists(output_file):
+                new_name = f"{base_name}_{len(full_paths)}_joined_{counter}{extension}"
+                output_file = os.path.join(output_dir, new_name)
+                counter += 1
+
+            # Build merge command (modify with your actual merge command)
+            cmd = ['merge_mp4', '-o', output_file] + full_paths
+
+            # Create source tracking file
+            source_file = output_file + '.source'
+            with open(source_file, 'w') as f:
+                for path in full_paths:
+                    f.write(os.path.basename(path) + '\n')
+
+            subprocess.Popen(cmd)
+            return jsonify({
+                'status': 'success',
+                'message': f'Merge started. Output will be: {os.path.basename(output_file)}'
+            })
+
+        elif data['command'] == 'delete':
+            for path in full_paths:
+                if os.path.isfile(path):
+                    # Check if .source file exists and delete it too
+                    source_file = path + '.source'
+                    if os.path.exists(source_file):
+                        os.remove(source_file)
+                    # Delete the actual file
+                    os.remove(path)
+                elif os.path.isdir(path):
+                    os.rmdir(path)
+            return jsonify({'status': 'success', 'message': 'Files deleted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# Clean up expired sessions periodically
+@app.before_request
+def cleanup_sessions():
+    current_time = time.time()
+    expired_sessions = [sid for sid, data in active_sessions.items()
+                        if data['expires'] < current_time]
+
+    for sid in expired_sessions:
+        active_sessions.pop(sid, None)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

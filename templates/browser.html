@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVM</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Left column: File browser -->
+            <div class="col-lg-5 col-md-12 pe-md-2">
+                <div class="card mb-4 file-list-container">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="title">Action Video Manager</span>
+                        <div class="auth-bar">
+                            <div class="auth-status">
+                                {% if is_authenticated %}
+                                <span class="auth-badge logged-in">
+                                    <i class="fas fa-user-shield"></i> Admin
+                                </span>
+                                <a href="#" onclick="logoutUser(); return false;" title="Log out">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </a>
+                                {% else %}
+                                <span class="auth-badge viewer">
+                                    <i class="fas fa-eye"></i> Viewer
+                                </span>
+                                <a href="#" onclick="showLoginModal(); return false;" title="Log in">
+                                    <i class="fas fa-sign-in-alt"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Breadcrumbs -->
+                        <nav aria-label="breadcrumb" class="px-3 pt-3">
+                            <ol class="breadcrumb">
+                                {% for crumb in breadcrumbs %}
+                                    {% if loop.last %}
+                                        <li class="breadcrumb-item active" aria-current="page">{{ crumb.name }}</li>
+                                    {% else %}
+                                        <li class="breadcrumb-item"><a href="{{ url_for('browse', subpath=crumb.path) }}">{{ crumb.name }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ol>
+                        </nav>
+
+                        {% if is_authenticated %}
+                        <!-- Action Buttons - Only for authenticated users -->
+                        <div class="action-buttons px-3 mb-3">
+                            <div class="btn-group mb-2">
+                                <button class="btn btn-primary" onclick="executeCommand('merge')">
+                                    <i class="fas fa-object-group me-1"></i> Merge
+                                </button>
+                                <button class="btn btn-danger" onclick="executeCommand('delete')">
+                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                </button>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                <label class="form-check-label" for="selectAll">Select all files</label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- File List -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        {% if is_authenticated %}
+                                        <th style="width: 40px;"></th>
+                                        {% endif %}
+                                        <th style="width: 120px;">Preview</th>
+                                        <th>Name</th>
+                                        <th>Size</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                    <tr class="file-item" id="item-{{ loop.index }}" data-path="{{ item.path }}">
+                                        {% if is_authenticated %}
+                                        <td>
+                                            <input type="checkbox" class="file-checkbox" data-path="{{ item.path }}">
+                                        </td>
+                                        {% endif %}
+                                        {% if item.is_dir %}
+                                        <td>
+                                            <div class="thumbnail-container" onclick="navigateToFolder('{{ url_for('browse', subpath=item.path) }}')">
+                                                <i class="fas fa-folder folder-icon"></i>
+                                            </div>
+                                        </td>
+                                        <td class="clickable-cell" onclick="navigateToFolder('{{ url_for('browse', subpath=item.path) }}')">
+                                            {{ item.name }}
+                                        </td>
+                                        {% elif item.is_video %}
+                                        <td class="clickable-cell" onclick="playMedia('video', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            <div class="thumbnail-container">
+                                                {% if item.thumbnail %}
+                                                    <img src="{{ item.thumbnail }}" alt="Thumbnail">
+                                                {% else %}
+                                                    <i class="fas fa-film video-icon"></i>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="clickable-cell" onclick="playMedia('video', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            <div>{{ item.name }}</div>
+
+                                            <!-- Video metadata -->
+                                            {% if item.video_metadata and (item.video_metadata.duration or item.video_metadata.codec or item.video_metadata.framerate) %}
+                                            <div class="video-metadata">
+                                                {% if item.video_metadata.duration %}
+                                                <span class="video-metadata-item" title="Duration">
+                                                    <i class="fas fa-clock video-metadata-icon"></i> {{ item.video_metadata.duration }}
+                                                </span>
+                                                {% endif %}
+
+                                                {% if item.video_metadata.codec %}
+                                                <span class="video-metadata-item" title="Codec">
+                                                    <i class="fas fa-file-video video-metadata-icon"></i> {{ item.video_metadata.codec }}
+                                                </span>
+                                                {% endif %}
+
+                                                {% if item.video_metadata.framerate %}
+                                                <span class="video-metadata-item" title="Framerate">
+                                                    <i class="fas fa-film video-metadata-icon"></i> {{ item.video_metadata.framerate }}
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+
+                                            <!-- Source files for merged videos -->
+                                            {% if item.source_files %}
+                                            <div class="source-files">
+                                                <div class="source-files-title">Merged from:</div>
+                                                <ul class="source-files-list">
+                                                    {% for source in item.source_files %}
+                                                    <li>{{ source }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                        </td>
+                                        {% elif item.is_image %}
+                                        <td class="clickable-cell" onclick="playMedia('image', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            <div class="thumbnail-container">
+                                                {% if item.thumbnail %}
+                                                    <img src="{{ item.thumbnail }}" alt="Thumbnail">
+                                                {% else %}
+                                                    <i class="fas fa-image image-icon"></i>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="clickable-cell" onclick="playMedia('image', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            {{ item.name }}
+                                        </td>
+                                        {% elif item.is_audio %}
+                                        <td class="clickable-cell" onclick="playMedia('audio', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            <div class="thumbnail-container">
+                                                <i class="fas fa-music audio-icon"></i>
+                                            </div>
+                                        </td>
+                                        <td class="clickable-cell" onclick="playMedia('audio', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                            {{ item.name }}
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="thumbnail-container">
+                                                <i class="fas fa-file file-icon"></i>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {{ item.name }}
+                                        </td>
+                                        {% endif %}
+                                        <td>
+                                            {% if not item.is_dir %}
+                                                <span title="Modified: {{ item.modified }}">{{ item.size }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if not item.is_dir %}
+                                                <div class="btn-group btn-group-sm">
+                                                    {% if item.is_video or item.is_image or item.is_audio %}
+                                                    <button class="btn btn-outline-primary" onclick="playMedia('{{ 'video' if item.is_video else 'image' if item.is_image else 'audio' }}', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <a href="{{ url_for('view_file', file_path=item.path) }}" target="_blank" class="btn btn-outline-info">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('download_file', file_path=item.path) }}" class="btn btn-outline-success">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if items|length == 0 %}
+                                    <tr>
+                                        <td colspan="{{ 5 if is_authenticated else 4 }}" class="text-center py-3">
+                                            <i class="fas fa-box-open me-2"></i> This folder is empty
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column: Media preview -->
+            <div class="col-lg-7 col-md-12 ps-md-2">
+                <div class="media-preview-container">
+                    <div class="media-preview">
+                        <div class="preview-header d-flex justify-content-between align-items-center">
+                            <span id="mediaTitle">No file selected</span>
+                            <div>
+                                <button id="closePreviewBtn" class="btn btn-sm btn-outline-secondary" onclick="closePreview()" style="display: none;">
+                                    <i class="fas fa-times"></i> Close
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Video player -->
+                        <video id="videoPlayer" class="w-100 p-2" controls style="display: none;">
+                            Your browser does not support the video tag.
+                        </video>
+
+                        <!-- Image viewer -->
+                        <img id="imageViewer" class="w-100 p-2" style="display: none;">
+
+                        <!-- Audio player -->
+                        <div id="audioContainer" class="audio-container" style="display: none;">
+                            <i class="fas fa-music audio-icon-large"></i>
+                            <h4 id="audioTitle">Audio Track</h4>
+                            <audio id="audioPlayer" controls>
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+
+                        <!-- Placeholder when nothing is selected -->
+                        <div id="previewPlaceholder" class="preview-placeholder">
+                            <i class="fas fa-photo-video"></i>
+                            <h4>Select a file to preview</h4>
+                            <p>Click on a video or image to preview it here</p>
+                            {% if not is_authenticated %}
+                            <div class="mt-4 p-3 border rounded bg-light">
+                                <p class="mb-2"><i class="fas fa-info-circle me-2 text-primary"></i> You're in view-only mode</p>
+                                <a href="#" class="btn btn-sm btn-primary" onclick="showLoginModal(); return false;">
+                                    <i class="fas fa-sign-in-alt me-1"></i> Login for full access
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="login-modal">
+        <div class="login-modal-content">
+            <div class="login-header">
+                <h5><i class="fas fa-lock me-2"></i> Admin Login</h5>
+                <span class="login-close" onclick="closeLoginModal()">&times;</span>
+            </div>
+            <div id="loginError" class="alert alert-danger" style="display: none;"></div>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-1"></i> Login
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap and other scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Keep track of current active media file
+        let activeFilePath = null;
+        let currentMediaType = null;
+
+        // Check if user is authenticated
+        let isAuthenticated = {{ 'true' if is_authenticated else 'false' }};
+
+        // Login Modal Functions
+        function showLoginModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+            document.getElementById('password').focus();
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('password').value = '';
+        }
+
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const password = document.getElementById('password').value;
+            const errorElement = document.getElementById('loginError');
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `password=${encodeURIComponent(password)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Login successful
+                    isAuthenticated = true;
+                    closeLoginModal();
+                    window.location.reload();
+                } else {
+                    // Login failed
+                    errorElement.textContent = data.message || 'Invalid password';
+                    errorElement.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                errorElement.textContent = 'Login request failed';
+                errorElement.style.display = 'block';
+                console.error('Login error:', error);
+            });
+        });
+
+        // Logout function
+        function logoutUser() {
+            fetch('/logout')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Logout successful
+                    isAuthenticated = false;
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Logout error:', error);
+                alert('Logout failed. Please try again.');
+            });
+        }
+
+        // Navigate to folder
+        function navigateToFolder(url) {
+            window.location.href = url;
+        }
+
+        // Toggle select all checkboxes
+        function toggleSelectAll() {
+            if (!isAuthenticated) return;
+
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+        }
+
+        // Clear active state from all items
+        function clearActiveItems() {
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        // Play media (video, image, or audio) in the preview panel
+        function playMedia(type, mediaUrl, mediaName, itemId) {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const imageViewer = document.getElementById('imageViewer');
+            const audioContainer = document.getElementById('audioContainer');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioTitle = document.getElementById('audioTitle');
+            const placeholder = document.getElementById('previewPlaceholder');
+            const title = document.getElementById('mediaTitle');
+            const closeBtn = document.getElementById('closePreviewBtn');
+            const item = document.getElementById(itemId);
+
+            // Stop any currently playing media first
+            if (videoPlayer.style.display === 'block') {
+                videoPlayer.pause();
+                videoPlayer.src = '';
+                videoPlayer.style.display = 'none';
+            }
+
+            if (audioContainer.style.display === 'flex') {
+                audioPlayer.pause();
+                audioPlayer.src = '';
+                audioContainer.style.display = 'none';
+            }
+
+            // Clear image if showing
+            if (imageViewer.style.display === 'block') {
+                imageViewer.src = '';
+                imageViewer.style.display = 'none';
+            }
+
+            // Clear active state from all items
+            clearActiveItems();
+
+            // Set active state to current item
+            item.classList.add('active');
+
+
+            // Hide placeholder
+            placeholder.style.display = 'none';
+
+            // Show close button
+            closeBtn.style.display = 'inline-block';
+
+            // Set title
+            title.textContent = mediaName;
+
+            if (type === 'video') {
+                // Show video player
+                videoPlayer.style.display = 'block';
+                videoPlayer.src = mediaUrl;
+                videoPlayer.play().catch(err => console.log('Playback error:', err));
+            } else if (type === 'image') {
+                // Show image viewer
+                imageViewer.style.display = 'block';
+                imageViewer.src = mediaUrl;
+            } else if (type === 'audio') {
+                // Show audio player
+                audioContainer.style.display = 'flex';
+                audioTitle.textContent = mediaName;
+                audioPlayer.src = mediaUrl;
+                audioPlayer.play().catch(err => console.log('Audio playback error:', err));
+            }
+        }
+
+        // Close preview
+        function closePreview() {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const imageViewer = document.getElementById('imageViewer');
+            const audioContainer = document.getElementById('audioContainer');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const placeholder = document.getElementById('previewPlaceholder');
+            const title = document.getElementById('mediaTitle');
+            const closeBtn = document.getElementById('closePreviewBtn');
+
+            // Pause video if playing
+            if (videoPlayer.style.display === 'block') {
+                videoPlayer.pause();
+                videoPlayer.src = '';
+            }
+
+            // Pause audio if playing
+            if (audioContainer.style.display === 'flex') {
+                audioPlayer.pause();
+                audioPlayer.src = '';
+            }
+
+            // Clear image if showing
+            if (imageViewer.style.display === 'block') {
+                imageViewer.src = '';
+            }
+
+            // Hide media elements
+            videoPlayer.style.display = 'none';
+            imageViewer.style.display = 'none';
+            audioContainer.style.display = 'none';
+
+            // Show placeholder
+            placeholder.style.display = 'flex';
+
+            // Reset title
+            title.textContent = 'No file selected';
+
+            // Hide buttons
+            closeBtn.style.display = 'none';
+
+            // Clear active state from all items
+            clearActiveItems();
+
+            // Clear active file path
+            activeFilePath = null;
+            currentMediaType = null;
+        }
+
+
+        // Execute command (merge, delete) - only for authenticated users
+        function executeCommand(command) {
+            if (!isAuthenticated) {
+                showAuthError();
+                return;
+            }
+
+            const selected = Array.from(document.querySelectorAll('.file-checkbox:checked'))
+                                .map(cb => cb.dataset.path);
+
+            if (selected.length === 0) {
+                alert('Please select at least one file');
+                return;
+            }
+
+            if (command === 'delete' && !confirm(`Really delete ${selected.length} files?`)) {
+                return;
+            }
+
+            executeWithFiles(command, selected);
+        }
+
+        // Show authentication required error
+        function showAuthError() {
+            alert('You need to log in to perform this action');
+            showLoginModal();
+        }
+
+        // Execute with files - API call that requires authentication
+        function executeWithFiles(command, files, activeFile = null) {
+            if (!isAuthenticated) {
+                showAuthError();
+                return;
+            }
+
+            // Show loading state on buttons if they exist
+            const buttons = document.querySelectorAll('.action-buttons button');
+            if (buttons) {
+                buttons.forEach(btn => {
+                    if (btn) btn.disabled = true;
+                });
+            }
+
+            fetch('/api/execute', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    command: command,
+                    files: files,
+                    activeFile: activeFile
+                })
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    throw new Error('Authentication required');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Show success message
+                    alert(data.message);
+                    if (command === 'delete') {
+                        window.location.reload(); // Refresh the file list
+                    }
+                } else {
+                    alert('Error: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                if (error.message === 'Authentication required') {
+                    showAuthError();
+                } else {
+                    alert('Request failed: ' + error.message);
+                }
+            })
+            .finally(() => {
+                // Reset button states if buttons exist
+                if (buttons) {
+                    buttons.forEach(btn => {
+                        if (btn) btn.disabled = false;
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

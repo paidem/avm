@@ -1,0 +1,217 @@
+body {
+    padding-top: 20px;
+    overflow-x: hidden;
+}
+.file-browser {
+    margin-bottom: 50px;
+}
+.thumbnail-container {
+    width: 120px;
+    height: 68px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: xx-large;
+}
+.thumbnail-container img {
+    max-width: 100%;
+    max-height: 100%;
+}
+.file-icon {
+    font-size: 2rem;
+    color: #6c757d;
+}
+.folder-icon {
+    color: #ffc107;
+}
+.video-icon {
+    color: #0d6efd;
+}
+.image-icon {
+    color: #20c997;
+}
+.audio-icon {
+    color: #6610f2;
+}
+.file-item {
+    transition: background-color 0.2s;
+}
+.file-item:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+.clickable-cell {
+    cursor: pointer;
+}
+.media-preview-container {
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+.media-preview {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    overflow: hidden;
+    height: 100%;
+}
+.preview-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    text-align: center;
+    padding: 20px;
+}
+.preview-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+#videoPlayer, #imageViewer, #audioPlayer {
+    max-height: calc(100% - 60px);
+    object-fit: contain;
+}
+.audio-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+}
+.audio-icon-large {
+    font-size: 6rem;
+    margin-bottom: 20px;
+    color: #6610f2;
+}
+#audioPlayer {
+    width: 80%;
+    margin-top: 20px;
+}
+.breadcrumb-item a {
+    text-decoration: none;
+}
+.card-header .title {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+.preview-header {
+    padding: 10px 15px;
+    background: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+    color: #495057;
+    font-weight: 500;
+}
+.file-list-container {
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+.file-item.active {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+.action-buttons {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+.auth-bar {
+    display: flex;
+    align-items: center;
+    margin-left: 15px;
+}
+.auth-bar a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.auth-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.auth-status i {
+    font-size: 0.9em;
+}
+.auth-badge {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    background: #e9ecef;
+}
+.auth-badge.logged-in {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+.auth-badge.viewer {
+    background: #f8d7da;
+    color: #842029;
+}
+.login-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.login-modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 350px;
+    max-width: 90%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.login-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.login-close {
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+.source-files {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 4px;
+}
+.source-files-list {
+    margin: 0;
+    padding-left: 8px;
+    list-style-type: none;
+}
+.source-files-title {
+    font-style: italic;
+}
+.video-metadata {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 4px;
+    display: flex;
+    gap: 12px;
+}
+.video-metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.video-metadata-icon {
+    font-size: 0.9em;
+}
