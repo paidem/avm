@@ -238,7 +238,7 @@
                         </div>
 
                         <!-- Video player -->
-                        <video id="videoPlayer" class="w-100 p-2" controls style="display: none;">
+                        <video id="videoPlayer" class="w-100 p-2" controls preload="auto" style="display: none;">
                             Your browser does not support the video tag.
                         </video>
 
@@ -568,7 +568,7 @@
                 if (data.status === 'success') {
                     // Show success message
                     alert(data.message);
-                    if (command === 'delete') {
+                    if (command === 'delete' || command === 'merge') {
                         window.location.reload(); // Refresh the file list
                     }
                 } else {
