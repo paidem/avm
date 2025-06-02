@@ -1,0 +1,11 @@
+.idea/*
+.venv/*
+venv
+redis_data
+static/thumbnails
+thumbnails
+docker-compose*
+.dockerignore
+.git
+.gitignore
+Dockerfile
