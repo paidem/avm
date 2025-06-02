@@ -29,7 +29,7 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
 SESSION_EXPIRY = 60 * 60 * 24 * 30
 
 # Files to filter out (hidden files and system files) from env var
-default_filtered = ['.DS_Store', '.Thumbs.db', '._.Trashes', '.Spotlight-V100',
+default_filtered = ['.DS_Store', '.Thumbs.db', 'Thumbs.db', '._.Trashes', '.Spotlight-V100',
                     '.fseventsd', '.Trashes', '@eaDir', 'desktop.ini', 'thumbs.db']
 filtered_from_env = os.environ.get('FILTERED_FILES', '')
 if filtered_from_env:
@@ -42,7 +42,7 @@ hidden_from_env = os.environ.get('HIDDEN_EXTENSIONS', '')
 if hidden_from_env:
     HIDDEN_EXTENSIONS = hidden_from_env.split(',')
 else:
-    HIDDEN_EXTENSIONS = []
+    HIDDEN_EXTENSIONS = ['source','srt']
 
 # Ensure thumbnails directory exists
 os.makedirs(thumbnails_base_dir, exist_ok=True)
