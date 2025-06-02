@@ -343,9 +343,68 @@ def view_file(file_path):
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         abort(404)
 
-    # Stream the file content
-    return send_file(full_path)
-
+    # Get file size
+    file_size = os.path.getsize(full_path)
+    
+    # Handle range request
+    range_header = request.headers.get('Range', None)
+    
+    # Default to sending the full file
+    byte_start = 0
+    byte_end = file_size - 1
+    status_code = 200
+    
+    # Parse range header if it exists
+    if range_header:
+        match = re.search(r'bytes=(\d+)-(\d*)', range_header)
+        if match:
+            groups = match.groups()
+            byte_start = int(groups[0])
+            byte_end = int(groups[1]) if groups[1] else file_size - 1
+            
+            if byte_start > file_size or byte_end >= file_size or byte_start > byte_end:
+                return Response(status=416)  # Range Not Satisfiable
+                
+            status_code = 206  # Partial Content
+    
+    # Calculate content length
+    content_length = byte_end - byte_start + 1
+    
+    # Determine content type
+    mime_type, _ = mimetypes.guess_type(full_path)
+    if not mime_type:
+        mime_type = 'application/octet-stream'
+    
+    # Create the response headers
+    headers = {
+        'Content-Type': mime_type,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': content_length,
+    }
+    
+    # Add Content-Range header for partial content responses
+    if status_code == 206:
+        headers['Content-Range'] = f'bytes {byte_start}-{byte_end}/{file_size}'
+    
+    def generate():
+        with open(full_path, 'rb') as f:
+            f.seek(byte_start)
+            remaining = content_length
+            chunk_size = min(1024 * 1024, remaining)  # 1MB chunks or smaller if file is smaller
+            
+            while remaining > 0:
+                chunk_size = min(chunk_size, remaining)
+                data = f.read(chunk_size)
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+    
+    return Response(
+        generate(),
+        status=status_code,
+        headers=headers
+    )
 
 @app.route('/api/execute', methods=['POST'])
 @auth_required
