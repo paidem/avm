@@ -6,8 +6,12 @@ import hashlib
 import secrets
 import uuid
 import json
+import re
+import mimetypes
+
+from functools import wraps
 from flask import Flask, render_template, jsonify, request, abort, send_file, Response, session, redirect, url_for, \
-    make_response
+    make_response, stream_with_context
 
 app = Flask(__name__, static_folder='static')
 # Set a secret key for session management
@@ -22,10 +26,6 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
 
 # Session expiry - 30 days (in seconds)
 SESSION_EXPIRY = 60 * 60 * 24 * 30
-
-# Session storage - simple in-memory dict
-# In production, consider using Redis or another persistent store
-active_sessions = {}
 
 # Files to filter out (hidden files and system files) from env var
 default_filtered = ['.DS_Store', '.Thumbs.db', '._.Trashes', '.Spotlight-V100',
@@ -47,68 +47,28 @@ else:
 os.makedirs(thumbnails_base_dir, exist_ok=True)
 
 
-def check_auth():
-    """Check if the current user is authenticated"""
-    session_id = request.cookies.get('session_id')
-    if session_id and session_id in active_sessions:
-        # Check if session is still valid
-        if active_sessions[session_id]['expires'] > time.time():
-            # Update expiry time on access
-            active_sessions[session_id]['expires'] = time.time() + SESSION_EXPIRY
-            return True
-    return False
+redis_host = os.environ.get('REDIS_HOST', '')
+if redis_host:
+    from modules.session.session_redis import setup_login_routes, check_auth
+else:
+    # If Redis is not enabled, use memory-based sessions
+    from modules.session.session_memory import setup_login_routes, check_auth
 
+setup_login_routes(app,ADMIN_PASSWORD)
 
 def auth_required(f):
     """Decorator to require authentication for a route"""
-
+    @wraps(f)  # Import wraps from functools
     def decorated(*args, **kwargs):
         if not check_auth():
             return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
         return f(*args, **kwargs)
-
-    decorated.__name__ = f.__name__
     return decorated
-
 
 @app.route('/')
 def root():
     # Redirect to browse
     return redirect(url_for('browse'))
-
-
-@app.route('/login', methods=['POST'])
-def login():
-    password = request.form.get('password')
-    if password == ADMIN_PASSWORD:
-        # Create a new session
-        session_id = str(uuid.uuid4())
-        active_sessions[session_id] = {
-            'created': time.time(),
-            'expires': time.time() + SESSION_EXPIRY
-        }
-
-        # Set cookie and return success
-        response = make_response(jsonify({'status': 'success', 'message': 'Login successful'}))
-        response.set_cookie('session_id', session_id, max_age=SESSION_EXPIRY, httponly=True,
-                            samesite='Strict', secure=request.is_secure)
-        return response
-    else:
-        return jsonify({'status': 'error', 'message': 'Invalid password'}), 401
-
-
-@app.route('/logout')
-def logout():
-    session_id = request.cookies.get('session_id')
-    if session_id and session_id in active_sessions:
-        # Remove session
-        active_sessions.pop(session_id, None)
-
-    # Clear cookie
-    response = make_response(jsonify({'status': 'success', 'message': 'Logged out successfully'}))
-    response.delete_cookie('session_id')
-    return response
-
 
 def get_video_metadata(file_path):
     """Get video metadata like duration, codec and framerate using ffprobe"""
@@ -452,17 +412,6 @@ def execute_command():
             return jsonify({'status': 'success', 'message': 'Files deleted'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
-# Clean up expired sessions periodically
-@app.before_request
-def cleanup_sessions():
-    current_time = time.time()
-    expired_sessions = [sid for sid, data in active_sessions.items()
-                        if data['expires'] < current_time]
-
-    for sid in expired_sessions:
-        active_sessions.pop(sid, None)
 
 
 if __name__ == '__main__':
