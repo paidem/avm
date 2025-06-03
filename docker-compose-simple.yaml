@@ -22,3 +22,5 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Europe/Vilnius
+      - ADMIN_PASSWORD=action
+      - PRIVATE_FOLDERS=Personal,Own,OnlyForMyEyes
