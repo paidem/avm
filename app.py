@@ -167,8 +167,12 @@ def get_dir_info(full_path):
     file_count = 0
 
     # Walk through all files in the directory
-    for dirpath, dirnames, filenames in os.walk(full_path):
-        print(filenames)
+    for dirpath, dirnames, filenames_all in os.walk(full_path):
+        filenames = []
+        for filename in filenames_all:
+            if not filename.startswith('SYNO') and not filename.startswith('.'):
+                filenames.append(filename)
+
         # Update file count
         file_count += len(filenames)
 
