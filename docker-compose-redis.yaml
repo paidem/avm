@@ -24,6 +24,7 @@ services:
       - TZ=Europe/Vilnius
       - REDIS_HOST=redis
       - ADMIN_PASSWORD=action
+      - PRIVATE_FOLDERS=Personal,Own,OnlyForMyEyes
   redis:
     image: redis:alpine
     volumes:

@@ -42,6 +42,18 @@ if hidden_from_env:
 else:
     HIDDEN_EXTENSIONS = ['source','srt']
 
+# Private folders to hide from top level
+private_from_env = os.environ.get('PRIVATE_FOLDERS', '')
+if private_from_env:
+    PRIVATE_FOLDERS_SRC = private_from_env.split(',')
+else:
+    PRIVATE_FOLDERS_SRC = ['Personal']
+
+PRIVATE_FOLDERS = []
+for folder in PRIVATE_FOLDERS_SRC:
+    PRIVATE_FOLDERS.append(os.path.join(base_dir, folder))
+
+print(PRIVATE_FOLDERS)
 # Ensure thumbnails directory exists
 os.makedirs(thumbnails_base_dir, exist_ok=True)
 
@@ -267,6 +279,12 @@ def browse(subpath=''):
 
     items = []
     try:
+        # Check that current folder is not privat
+        if not is_authenticated:
+            for private_folder in PRIVATE_FOLDERS:
+                if full_path.startswith(private_folder):
+                   return render_template('error.html', message="Directory not found"), 404
+
         for name in os.listdir(full_path):
             # Skip filtered files
             if name in FILTERED_FILES or name.startswith('.'):
@@ -280,6 +298,10 @@ def browse(subpath=''):
             item_path = os.path.join(subpath, name) if subpath else name
             abs_path = os.path.join(full_path, name)
             is_dir = os.path.isdir(abs_path)
+
+            # Skip private folders listing
+            if is_dir and abs_path in PRIVATE_FOLDERS and not is_authenticated:
+                continue
 
             item = {
                 'name': name,
@@ -353,6 +375,15 @@ def browse(subpath=''):
 def download_file(file_path):
     full_path = os.path.join(base_dir, file_path)
 
+    # Check if user is authenticated
+    is_authenticated = check_auth()
+
+    # Check that file being downloaded is not private
+    if not is_authenticated:
+        for private_folder in PRIVATE_FOLDERS:
+            if full_path.startswith(private_folder):
+                abort(404)
+
     # Security check
     if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
         abort(403)
@@ -366,6 +397,14 @@ def download_file(file_path):
 @app.route('/view/<path:file_path>')
 def view_file(file_path):
     full_path = os.path.join(base_dir, file_path)
+
+    # Check if user is authenticated
+    is_authenticated = check_auth()
+
+    if not is_authenticated:
+        for private_folder in PRIVATE_FOLDERS:
+            if full_path.startswith(private_folder):
+                abort(404)
 
     # Security check
     if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
