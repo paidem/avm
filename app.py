@@ -8,7 +8,7 @@ import json
 import re
 import mimetypes
 import shutil
-
+import time
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, abort, send_file, Response, redirect, url_for
 
@@ -197,21 +197,54 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
     # Generate thumbnail if it doesn't exist
     if not os.path.exists(thumbnail_path):
         try:
+            action = "Generated"
             if is_video:
+                # Extract metadata to decide how we get thumbnail - extract or generate
+                ffprobe_cmd = ['ffprobe',
+                       '-v', 'quiet',
+                       '-print_format', 'json',
+                       '-show_format',
+                       '-show_streams',
+                       abs_path]
+
+                # Execute the command and capture output
+                ffprobe_result = subprocess.run(ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+                # Parse the JSON output
+                ffprobe_data = json.loads(ffprobe_result.stdout)
+
+                # Extract the number of streams (equivalent to jq '.format.nb_streams')
+                nb_streams = ffprobe_data['format']['nb_streams']
+
+                # DJI O3/O4 (and maybe many others) have 1280x720 thumbnail embedded as the last stream with single frame
+                if nb_streams > 3 and ffprobe_data['streams'][nb_streams-1]['disposition']['attached_pic'] == 1:
+                    cmd = [
+                        'ffmpeg', '-i', abs_path,
+                        '-map', '0:{}'.format(nb_streams-1),
+                        '-frames:v','1',
+                        thumbnail_path
+                    ]
+                    action = "Extracted"
+                else:
+                    cmd = [
+                        'ffmpeg', '-i', abs_path,
+                        '-ss', '00:00:00.000', '-vframes', '1',
+                        '-vf', 'scale=200:-1',
+                        thumbnail_path
+                    ]
+            else:  # For images
                 cmd = [
                     'ffmpeg', '-i', abs_path,
-                    '-ss', '00:00:00.000', '-vframes', '1',
                     '-vf', 'scale=200:-1',
                     thumbnail_path
                 ]
-                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            elif is_video is False:  # For images
-                cmd = [
-                    'ffmpeg', '-i', abs_path,
-                    '-vf', 'scale=200:-1',
-                    thumbnail_path
-                ]
-                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # Measure elapsed time and report
+            start_time = time.perf_counter()
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            elapsed_time = time.perf_counter() - start_time
+
+            print("{} thumbnail for {} took  {:.4f}".format(action, abs_path, elapsed_time))
             # Audio has no thumbnail generation - will use default icon
         except Exception as e:
             print(f"Error generating thumbnail: {e}")
