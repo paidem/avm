@@ -162,6 +162,42 @@ def get_video_metadata(file_path):
         }
 
 
+def get_dir_info(full_path):
+    raw_size = 0
+    file_count = 0
+
+    # Walk through all files in the directory
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        print(filenames)
+        # Update file count
+        file_count += len(filenames)
+
+        # Add size of each file
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            # Skip if it's a symbolic link
+            if not os.path.islink(file_path):
+                raw_size += os.path.getsize(file_path)
+
+        # Format size for display
+        if raw_size < 1024:
+            size_str = f"{raw_size} bytes"
+        elif raw_size < 1024 * 1024:
+            size_str = f"{raw_size / 1024:.1f} KB"
+        elif raw_size < 1024 * 1024 * 1024:
+            size_str = f"{raw_size / (1024 * 1024):.1f} MB"
+        else:
+            size_str = f"{raw_size / (1024 * 1024 * 1024):.1f} GB"
+
+    stats = os.stat(full_path)
+    modified = datetime.datetime.fromtimestamp(stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+    return {
+        'file_count': file_count,
+        'size_str': size_str,
+        'raw_size': raw_size,
+        'modified': modified
+    }
+
 def get_file_info(full_path):
     """Get size and modification date of a file"""
     stats = os.stat(full_path)
@@ -317,8 +353,14 @@ def browse(subpath=''):
                     'codec': None,
                     'framerate': None,
                     'creation_time': None
-                }
+                },
+                'file_count': 0,
+                'size_str': 'n/a',
+                'raw_size': 0
             }
+            # Get directory metadata
+            if is_dir:
+                item.update(get_dir_info(abs_path))
 
             # Get file info if it's not a directory
             if not is_dir:

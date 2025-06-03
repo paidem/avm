@@ -100,6 +100,14 @@
                                         </td>
                                         <td class="clickable-cell" onclick="navigateToFolder('{{ url_for('browse', subpath=item.path) }}')">
                                             {{ item.name }}
+                                                                                    <!-- Dir metadata -->
+
+                                             <div class="video-metadata">
+                                                 <span class="video-metadata-item" title="File Count">
+                                                    {{ item.file_count }} files
+                                                 </span>
+                                             </div>
+
                                         </td>
                                         {% elif item.is_video %}
                                         <td class="clickable-cell" onclick="playMedia('video', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
@@ -187,7 +195,9 @@
                                         </td>
                                         {% endif %}
                                         <td>
-                                            {% if not item.is_dir %}
+                                            {% if item.is_dir %}
+                                                <span title="Modified: {{ item.modified }}">{{ item.size_str }}</span>
+                                            {% else %}
                                                 <span title="Modified: {{ item.modified }}">{{ item.size }}</span>
                                             {% endif %}
                                         </td>
