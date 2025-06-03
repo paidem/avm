@@ -7,6 +7,7 @@ import secrets
 import json
 import re
 import mimetypes
+import shutil
 
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, abort, send_file, Response, redirect, url_for
@@ -462,9 +463,30 @@ def execute_command():
                     source_file = path + '.source'
                     if os.path.exists(source_file):
                         os.remove(source_file)
+
+                    # Check if subtitles file exists and delete it also
+                    base_name, extension = os.path.splitext(path)
+                    srt_file = base_name + '.SRT'
+                    print("Cheking for " + srt_file)
+                    if os.path.exists(srt_file):
+                        os.remove(srt_file)
+
                     # Delete the actual file
                     os.remove(path)
                 elif os.path.isdir(path):
+                    # Delete @eaDir as it is created on Synology for metadata
+                    eaDir = path+"/@eaDir"
+
+                    if (os.path.isdir(eaDir)):
+                        shutil.rmtree(eaDir)
+
+                    # Remove .DS_Store on mac, because I test on mac
+                    dsStore = path+"/.DS_Store"
+                    if (os.path.exists(dsStore)):
+                        os.remove(dsStore)
+
+                    # This will fail if there are any files in directory
+                    # The files can be invisible from interface because they are hidden.
                     os.rmdir(path)
             return jsonify({'status': 'success', 'message': 'Files deleted'})
     except Exception as e:
