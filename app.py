@@ -522,6 +522,25 @@ def execute_command():
                     # The files can be invisible from interface because they are hidden.
                     os.rmdir(path)
             return jsonify({'status': 'success', 'message': 'Files deleted'})
+        elif data['command'] == 'rename':
+            old_path = full_paths[0]
+            new_path =  full_paths[1]
+
+            if os.path.dirname(old_path) != os.path.dirname(new_path):
+                return jsonify({"status": "error", "message": "Please, no moving"})
+
+            if not os.path.exists(old_path):
+                return jsonify({"status": "error", "message": "Source file does not exist"})
+
+            if os.path.exists(new_path):
+                return jsonify({"status": "error", "message": "A file with that name already exists"})
+
+            try:
+                os.rename(old_path, new_path)
+                return jsonify({"status": "success", "message": f"File renamed successfully"})
+            except Exception as e:
+                return jsonify({"status": "error", "message": f"Error renaming file: {str(e)}"})
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

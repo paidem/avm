@@ -81,7 +81,7 @@
                                         <th style="width: 120px;">Preview</th>
                                         <th>Name</th>
                                         <th>Size</th>
-                                        <th>Actions</th>
+                                        <th style="text-align: right; padding-right: 16px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -192,8 +192,8 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if not item.is_dir %}
-                                                <div class="btn-group btn-group-sm">
+                                            <div class="btn-group btn-group-sm btn-group-actions">
+                                                 {% if not item.is_dir %}
                                                     {% if item.is_video or item.is_image or item.is_audio %}
                                                     <button class="btn btn-outline-primary" onclick="playMedia('{{ 'video' if item.is_video else 'image' if item.is_image else 'audio' }}', '{{ url_for('view_file', file_path=item.path) }}', '{{ item.name }}', 'item-{{ loop.index }}')">
                                                         <i class="fas fa-play"></i>
@@ -205,8 +205,13 @@
                                                     <a href="{{ url_for('download_file', file_path=item.path) }}" class="btn btn-outline-success">
                                                         <i class="fas fa-download"></i>
                                                     </a>
-                                                </div>
-                                            {% endif %}
+                                                {% endif %}
+                                                {% if is_authenticated %}
+                                                    <button class="btn btn-secondary btn-sm" onclick="showRenameDialog('{{ item.path }}')">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -295,7 +300,39 @@
             </form>
         </div>
     </div>
-
+    <!-- Rename Dialog Modal -->
+    <div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renameModalLabel">Rename File</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="renameForm">
+                        <div class="mb-3">
+                            <label for="currentPath" class="form-label">Current Path:</label>
+                            <input type="text" class="form-control" id="currentPath" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="currentFileName" class="form-label">Current Name:</label>
+                            <input type="text" class="form-control" id="currentFileName" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newFileName" class="form-label">New Name:</label>
+                            <input type="text" class="form-control" id="newFileName" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="alert alert-danger" role="alert" id="renameAlert" hidden>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="renameFile()">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Bootstrap and other scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
     <script>
@@ -535,7 +572,7 @@
         }
 
         // Execute with files - API call that requires authentication
-        function executeWithFiles(command, files, activeFile = null) {
+        function executeWithFiles(command, files) {
             if (!isAuthenticated) {
                 showAuthError();
                 return;
@@ -555,7 +592,6 @@
                 body: JSON.stringify({
                     command: command,
                     files: files,
-                    activeFile: activeFile
                 })
             })
             .then(response => {
@@ -566,9 +602,7 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    // Show success message
-                    alert(data.message);
-                    if (command === 'delete' || command === 'merge') {
+                    if (command === 'delete' || command === 'merge' || command === 'rename') {
                         window.location.reload(); // Refresh the file list
                     }
                 } else {
@@ -590,6 +624,77 @@
                     });
                 }
             });
+        }
+        // File renaming functions
+        let fileToRename = '';
+        let pathToRename = '';
+
+        function showRenameDialog(filepath) {
+
+            // Get path
+            const lastSlashIndex = filepath.lastIndexOf('/');
+            fileToRename = filepath.substring(lastSlashIndex+1);
+            pathToRename = filepath.substring(0,lastSlashIndex);
+
+            document.getElementById('currentFileName').value = fileToRename;
+            document.getElementById('currentPath').value = pathToRename;
+            document.getElementById('newFileName').value = fileToRename;
+
+            // Show the modal using Bootstrap's modal API
+            const renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
+            renameModal.show();
+
+            // Focus on the new filename input and select the name part (before extension)
+            setTimeout(() => {
+                const input = document.getElementById('newFileName');
+                input.focus();
+
+                // Select name without extension
+                const lastDotIndex = fileToRename.lastIndexOf('.');
+                if (lastDotIndex !== -1) {
+                    input.setSelectionRange(0, lastDotIndex);
+                } else {
+                    input.select();
+                }
+            }, 500);
+        }
+
+        function showAlert(element, message) {
+            element.innerHTML = message;
+            element.hidden = false;
+        }
+
+        function renameFile() {
+            const alertElement = document.getElementById('renameAlert');
+            alertElement.hidden = true
+
+            const newFileName = document.getElementById('newFileName').value.trim();
+
+            // Basic validation
+            if (!newFileName) {
+                showAlert(alertElement, 'New filename cannot be empty');
+                return;
+            }
+
+             if (newFileName.indexOf('/')>-1) {
+                showAlert(alertElement, 'Sorry, you cannot move files using this dialog');
+                return;
+            }
+            if (newFileName === fileToRename) {
+                showAlert(alertElement, 'New filename is the same as the current one');
+                return;
+            }
+
+            // Execute the rename command
+            console.log("pathToRename: ")
+            console.log(pathToRename)
+            if (pathToRename.length > 0) {
+                pathToRename = pathToRename + '/'
+            }
+            executeWithFiles("rename",[pathToRename + fileToRename, pathToRename + newFileName])
+
+            // Hide the modal
+            bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
         }
     </script>
 </body>

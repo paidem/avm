@@ -215,3 +215,7 @@ body {
 .video-metadata-icon {
     font-size: 0.9em;
 }
+.btn-group-actions {
+    float: right;
+    padding-right:10px;
+}
