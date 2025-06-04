@@ -101,12 +101,13 @@
                                         <td class="clickable-cell" onclick="navigateToFolder('{{ url_for('browse', subpath=item.path) }}')">
                                             {{ item.name }}
                                                                                     <!-- Dir metadata -->
-
+                                            {% if  item.file_count > 0 %}
                                              <div class="video-metadata">
                                                  <span class="video-metadata-item" title="File Count">
                                                     {{ item.file_count }} files
                                                  </span>
                                              </div>
+                                             {% endif %}
 
                                         </td>
                                         {% elif item.is_video %}

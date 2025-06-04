@@ -359,12 +359,13 @@ def browse(subpath=''):
                     'creation_time': None
                 },
                 'file_count': 0,
-                'size_str': 'n/a',
+                'size_str': '',
                 'raw_size': 0
             }
             # Get directory metadata
-            if is_dir:
-                item.update(get_dir_info(abs_path))
+            # if is_dir:
+            #     print("Getting metadata for " + abs_path)
+            #     item.update(get_dir_info(abs_path))
 
             # Get file info if it's not a directory
             if not is_dir:
