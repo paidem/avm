@@ -4,3 +4,5 @@ venv
 redis_data
 static/thumbnails
 thumbnails
+docker-compose.yaml*
+docker-compose.yml*
