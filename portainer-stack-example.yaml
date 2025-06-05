@@ -9,7 +9,7 @@ services:
       - /volume2/footage/avm/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       # mount media folder so that
       - /volume2/footage:/media:ro
-      # mount thumbnails so that nginx can serve them more effectively
+      # mount thumbnails directory so that nginx can serve them more effectively
       - /volume2/footage/avm/thumbnails:/thumbnails:ro
     ports:
       - "8000:80"

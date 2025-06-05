@@ -1,26 +1,13 @@
-version: '3'
-
-volumes:
-  nfs_footage:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=192.168.10.90,rw
-      device: ":/volume2/footage"
-
 services:
-  flask_app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  app:
+    image: paidem/avm:latest
     ports:
       - "5000:5000"
     volumes:
-      - nfs_footage:/media
-      - ./thumbnails:/app/static/thumbnails
+      - /media:/media
+      - /media/avm/thumbnails:/app/static/thumbnails
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Europe/Vilnius
       - ADMIN_PASSWORD=action
-      - PRIVATE_FOLDERS=Personal,Own,OnlyForMyEyes
