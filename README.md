@@ -5,14 +5,14 @@ Welcome to Action Video Manager (AVM) — tool for managing drone and action cam
 This project is all about making your (my, actually) life easier and solving some of those issues with storing and merging your videos.
 
 ## Why
-- **Tired of Split Files?**: DJI Air Units and certain action cams chunk videos into 3.5GB files, which means lots of files for longer flights. AVM makes it simple to combine them, so you get a neat "one flight, one file" situation.
+- **Tired of Split Files?**: DJI Air Units, drones and action cams split videos into 3.5GB files, which means lots of files for longer flights. AVM makes it simple to combine them, so you get a neat "one flight, one file" situation.
 - **Smooth Stabilization**: If you’re using [Gyroflow](https://gyroflow.xyz/) for stabilizing your video, it works best if files are merged first. No more weird jumps or jolts between 2 stabilized files!
 - **Pre-merging**: Waiting for files to download and merge on your PC can be a painful. AVM helps you start gyroflow process faster by merging those files in advance.
 - **No More Typing Command Hassles**: Using Gyroflow’s merge tool via SSH can be a pain. AVM brings a user-friendly interface so you can just point, click, and get on with it.
 
 ## Features
 - Video/Audio/Images playback
-- Downloading of video files
+- Files download (useful to quickly get files to your machine where you will use for editing)
 - Merging video files using [Gyroflow's mp4_merge](https://github.com/gyroflow/mp4-merge)
 - Renaming and deleting of files
 - Optional redis support (for login sessions)
@@ -40,14 +40,14 @@ This project is all about making your (my, actually) life easier and solving som
 - **NFS Option**: Store files on a NAS accessible via NFS and mount them on a Linux PC/Server.
 - **Local Option**: Keep everything on a PC/Server that can run Docker and access media files locally.
 
-## Running AVM
+# Running AVM
 
-### Quick and Easy Container
+## Simple container
 ```bash
 docker run -v /media:/media paidem/avm:latest
 ```
 
-### Docker Compose Setup
+## Docker Compose Stack
 ```yaml
 services:
   app:
@@ -64,10 +64,10 @@ services:
       - ADMIN_PASSWORD=action
 ```
 
-### Portainer Stack
+## Portainer Stack
 Use the **portainer-stack-example.yaml** file to get things rolling.
 
-# Docker container
+# Container info
 ## ENV Variables
 
 | Variable              | What It Does                                                  | Default                                                                                                    |
