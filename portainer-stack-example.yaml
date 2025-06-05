@@ -1,0 +1,41 @@
+version: '2'
+
+services:
+  # nginx is optional, but it uses less resources when streaming video than python app
+  nginx:
+    image: nginx:alpine
+    volumes:
+      # copy nginx.conf file to any folder and mount.
+      - /volume2/footage/avm/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # mount media folder so that
+      - /volume2/footage:/media:ro
+      # mount thumbnails so that nginx can serve them more effectively
+      - /volume2/footage/avm/thumbnails:/thumbnails:ro
+    ports:
+      - "8000:80"
+    restart: unless-stopped
+
+  app:
+    image: paidem/avm:0.0.9
+    volumes:
+      - /volume2/footage:/media
+      # thumbnails can be in any folder
+      - /volume2/footage/avm/thumbnails:/app/static/thumbnails
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - ADMIN_PASSWORD=ThisIsMyAdminPassword
+      # File/directory names to hide from UI
+      - FILTERED_FILES=avm,.DS_Store,.Thumbs.db,Thumbs.db,.Trashes,.Spotlight-V100,.fseventsd,.Trashes,@eaDir,desktop.ini,thumbs.db,#snapshot,#recycle,thumbnails,redis_data,resize.log
+      # Extensions to hide from UI
+      - HIDDEN_EXTENSIONS=source,srt,dng,log,db
+      # List of folders which are only available after login
+      - PRIVATE_FOLDERS=Personal
+    command: gunicorn --bind 0.0.0.0:5000 --timeout 30 --workers 4 --threads 4 app:app
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - /volume2/footage/avm/redis_data:/data
+    restart: always
