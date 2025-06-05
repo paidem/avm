@@ -67,6 +67,7 @@ services:
 ### Portainer Stack
 Use the **portainer-stack-example.yaml** file to get things rolling.
 
+# Docker container
 ## ENV Variables
 
 | Variable              | What It Does                                                  | Default                                                                                                    |
@@ -76,6 +77,7 @@ Use the **portainer-stack-example.yaml** file to get things rolling.
 | **HIDDEN_EXTENSIONS** | Don't want to see these file extensions                       | source,srt                                                                                                 |
 | **PRIVATE_FOLDERS**   | Folders only visible in admin mode                            | Personal                                                                                                   |
 | **REDIS_HOST**        | Optional redis host. If specified - will be used for sessions | n/a                                                                                                        |  
+
 ## Where Stuff Goes in the Container
 
 | Path                      | What It’s For                                                                                 |
@@ -85,13 +87,14 @@ Use the **portainer-stack-example.yaml** file to get things rolling.
 
 Hope this helps you get started with AVM! If you've got any questions or run into issues, dive into the community or reach out. Enjoy merging and managing your action vids!
 
-# Accessing from internet
+# Everything else
+## Accessing from internet
 You should be careful when exposing this app to internet as lets access all your footage and in case of vulnerabilities - delete your footage.
 
 I recommend using only with IP whitelist or CloudFlare proxy/zero-trust tunnel with google authentication and whitelisted IP (as I do)
 
-# Development
+## Development
 You need [mp4_merge](https://github.com/gyroflow/mp4-merge) and ffmpeg installed in path
 
-# Links
+## Links
 [dockerhub](https://hub.docker.com/r/paidem/avm)
