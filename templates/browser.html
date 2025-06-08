@@ -642,9 +642,11 @@
                         window.location.reload(); // Refresh the file list
                     }
                     if (command === 'rename') {
-                        if (window.location.pathname.indexOf(files[0])>0) {
-                            newLocation = window.location.pathname.replace(files[0],files[1])
-                            navigateToFolder(newLocation)
+                        current_path = decodeURI(window.location.pathname)
+
+                        if (current_path.indexOf(files[0])>0) {
+                            new_path = current_path.replace(files[0],files[1])
+                            navigateToFolder(new_path)
                         }
                         else {
                             window.location.reload(); // Refresh the file list
