@@ -45,6 +45,11 @@
                                 {% for crumb in breadcrumbs %}
                                     {% if loop.last %}
                                         <li class="breadcrumb-item active" aria-current="page">{{ crumb.name }}</li>
+                                        {% if is_authenticated %}
+                                            <button class="btn btn-secondary btn-sm" style="margin-left:10px;" onclick="showRenameDialog('{{ breadcrumbs[1:]|map(attribute='name')|join('/') }}')">
+                                                 <i class="fas fa-edit"></i>
+                                            </button>
+                                        {% endif %}
                                     {% else %}
                                         <li class="breadcrumb-item"><a href="{{ url_for('browse', subpath=crumb.path) }}">{{ crumb.name }}</a></li>
                                     {% endif %}
@@ -613,8 +618,17 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    if (command === 'delete' || command === 'merge' || command === 'rename') {
+                    if (command === 'delete' || command === 'merge') {
                         window.location.reload(); // Refresh the file list
+                    }
+                    if (command === 'rename') {
+                        if (window.location.pathname.indexOf(files[0])>0) {
+                            newLocation = window.location.pathname.replace(files[0],files[1])
+                            navigateToFolder(newLocation)
+                        }
+                        else {
+                            window.location.reload(); // Refresh the file list
+                        }
                     }
                 } else {
                     alert('Error: ' + (data.message || 'Unknown error'));
