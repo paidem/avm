@@ -326,14 +326,81 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
     return f"/static/thumbnails/{file_hash[:2]}/{file_hash}.jpg"
 
 
+def get_neighboring_dirs(base_dir, subpath):
+    """
+    Find the next and previous directories relative to the current directory.
+
+    Args:
+        base_dir: The base directory of the app
+        subpath: The current subpath from base_dir
+
+    Returns:
+        tuple: (prev_dir, next_dir) with paths relative to base_dir or None if not available
+    """
+
+    # Check if user is authenticated
+    is_authenticated = check_auth()
+
+    full_path = os.path.join(base_dir, subpath)
+
+    # If we're in the base directory itself, there's no next/prev
+    if full_path == base_dir:
+        return None, None
+
+    # Get the parent directory
+    parent_dir = os.path.dirname(full_path)
+
+    # Get the current directory name
+    current_dir_name = os.path.basename(full_path)
+
+    # List all subdirectories in the parent directory
+    try:
+        subdirs = []
+        for d in os.listdir(parent_dir):
+            if os.path.isdir(os.path.join(parent_dir, d)):
+                block_adding = False
+
+                # Check that current folder is not private
+                if not is_authenticated:
+                    full_path_of_subdir = os.path.join(parent_dir, d)
+
+                    for private_folder in PRIVATE_FOLDERS:
+                        if full_path_of_subdir.startswith(private_folder):
+                            block_adding = True
+
+                if d in FILTERED_FILES:
+                    block_adding = True
+
+                if (not block_adding):
+                    subdirs.append(d)
+
+        # Sort directories for consistent navigation
+        subdirs.sort()
+
+        # Find the index of the current directory
+        if current_dir_name in subdirs:
+            current_index = subdirs.index(current_dir_name)
+
+            # Calculate prev_dir and next_dir
+            prev_dir = None if current_index == 0 else os.path.join(os.path.dirname(subpath),
+                                                                    subdirs[current_index - 1])
+            next_dir = None if current_index == len(subdirs) - 1 else os.path.join(os.path.dirname(subpath),
+                                                                                   subdirs[current_index + 1])
+
+            return prev_dir, next_dir
+    except (FileNotFoundError, PermissionError):
+        # Handle potential errors when accessing directories
+        pass
+
+    return None, None
 
 
 @app.route('/browse/')
 @app.route('/browse/<path:subpath>')
 def browse(subpath=''):
     full_path = os.path.join(base_dir, subpath)
+    prev_dir, next_dir = get_neighboring_dirs(base_dir, subpath)
 
-    # Security check
     if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
         abort(403)
 
@@ -439,7 +506,9 @@ def browse(subpath=''):
                            items=items,
                            current_path=subpath,
                            breadcrumbs=breadcrumbs,
-                           is_authenticated=is_authenticated)
+                           is_authenticated=is_authenticated,
+                           prev_dir=prev_dir,
+                           next_dir=next_dir)
 
 
 @app.route('/download/<path:file_path>')
