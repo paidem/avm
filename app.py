@@ -238,6 +238,14 @@ def get_source_info(file_path):
             print(f"Error reading source file: {e}")
     return None
 
+def generate_all_thumbnails(full_path):
+    # Walk through all files in the directory
+    for dirpath, dirnames, filenames_all in os.walk(full_path):
+        for filename in filenames_all:
+            extension = os.path.splitext(filename)[1].lower()
+            if extension in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+                print(dirpath + "/" + filename)
+                get_thumbnail_path(filename, dirpath + "/" + filename, is_video=True)
 
 def get_thumbnail_path(file_path, abs_path, is_video=True):
     """Generate a thumbnail path for a video or image file based on filename and filesize"""
@@ -309,13 +317,15 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             elapsed_time = time.perf_counter() - start_time
 
-            print("{} thumbnail for {} took  {:.4f}".format(action, abs_path, elapsed_time))
+            print("{} thumbnail for {} took  {:.2f}s".format(action, abs_path, elapsed_time))
             # Audio has no thumbnail generation - will use default icon
         except Exception as e:
             print(f"Error generating thumbnail: {e}")
             return None
 
     return f"/static/thumbnails/{file_hash[:2]}/{file_hash}.jpg"
+
+
 
 
 @app.route('/browse/')
@@ -689,6 +699,8 @@ def execute_command():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# Generate all thumbnails on start
+generate_all_thumbnails(base_dir)
 
 if __name__ == '__main__':
     app.run(debug=True)
