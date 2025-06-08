@@ -394,10 +394,8 @@ def get_neighboring_dirs(base_dir, subpath):
             current_index = subdirs.index(current_dir_name)
 
             # Calculate prev_dir and next_dir
-            prev_dir = None if current_index == 0 else os.path.join(os.path.dirname(subpath),
-                                                                    subdirs[current_index - 1])
-            next_dir = None if current_index == len(subdirs) - 1 else os.path.join(os.path.dirname(subpath),
-                                                                                   subdirs[current_index + 1])
+            prev_dir = None if current_index == 0 else subdirs[current_index - 1]
+            next_dir = None if current_index == len(subdirs) - 1 else subdirs[current_index + 1]
 
             return prev_dir, next_dir
     except (FileNotFoundError, PermissionError):
