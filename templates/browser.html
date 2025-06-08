@@ -228,6 +228,17 @@
                                                     </button>
                                                 {% endif %}
                                             </div>
+                                            <br/>
+                                            <div class="btn-group btn-group-sm btn-group-actions" style="margin-top:5px;">
+                                                  <!-- Source files for merged videos -->
+                                               {% if item.source_files %}
+                                                    {% if is_authenticated %}
+                                                        <button class="btn btn-outline-primary" onclick="deleteSource('{{ item.path }}')">
+                                                               <i class="fa-solid fa-trash-can"></i> Delete source
+                                                        </button>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -444,6 +455,15 @@
             });
         }
 
+        function deleteSource(filepath) {
+            const selected = [filepath]
+            if (!confirm(`Really delete source files for the selected video?`)) {
+                return;
+            }
+
+            executeWithFiles("delete_source", selected);
+        }
+
         // Play media (video, image, or audio) in the preview panel
         function playMedia(type, mediaUrl, mediaName, itemId) {
             const videoPlayer = document.getElementById('videoPlayer');
@@ -618,7 +638,7 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    if (command === 'delete' || command === 'merge') {
+                    if (command === 'delete' || command === 'merge' || command === 'delete_source') {
                         window.location.reload(); // Refresh the file list
                     }
                     if (command === 'rename') {

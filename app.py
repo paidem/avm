@@ -609,6 +609,46 @@ def execute_command():
                     # The files can be invisible from interface because they are hidden.
                     os.rmdir(path)
             return jsonify({'status': 'success', 'message': 'Files deleted'})
+        elif data['command'] == 'delete_source':
+            if not full_paths:
+                return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
+            # Get the source file path
+            main_file = full_paths[0]
+            source_file = main_file + '.source'
+
+            # Check if source file exists
+            if not os.path.exists(source_file):
+                return jsonify({'status': 'error', 'message': 'Source file not found'}), 404
+
+            # Get directory of the main file to find the source files
+            directory = os.path.dirname(main_file)
+            deleted_files = []
+
+            try:
+                # Read filenames from source file
+                with open(source_file, 'r') as f:
+                    source_filenames = f.read().splitlines()
+
+                # Delete each file listed in the source file
+                for filename in source_filenames:
+                    if filename:  # Skip empty lines
+                        file_path = os.path.join(directory, filename)
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            deleted_files.append(filename)
+
+                # Delete the source file itself
+                os.remove(source_file)
+
+                return jsonify({
+                    'status': 'success',
+                    'message': f'Deleted source file and {len(deleted_files)} referenced files',
+                    'deleted_files': deleted_files
+                })
+
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': f'Error deleting source files: {str(e)}'}), 500
         elif data['command'] == 'rename':
             old_path = full_paths[0]
             new_path =  full_paths[1]
