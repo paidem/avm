@@ -379,8 +379,9 @@ def browse(subpath=''):
                     item['video_metadata'] = get_video_metadata(abs_path)
 
                     # Check if it's a merged file
-                    if 'joined' in name or 'merged' in name:
-                        item['source_files'] = get_source_info(abs_path)
+                    source_files = get_source_info(abs_path)
+                    if source_files:
+                        item['source_files'] = source_files
 
                 elif extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
                     item['is_image'] = True
@@ -611,6 +612,9 @@ def execute_command():
         elif data['command'] == 'rename':
             old_path = full_paths[0]
             new_path =  full_paths[1]
+            source_file = full_paths[0] + '.source'
+            new_source_file = full_paths[1] + '.source'
+
 
             if os.path.dirname(old_path) != os.path.dirname(new_path):
                 return jsonify({"status": "error", "message": "Please, no moving"})
@@ -623,6 +627,8 @@ def execute_command():
 
             try:
                 os.rename(old_path, new_path)
+                if os.path.exists(source_file):
+                    os.rename(source_file, new_source_file)
                 return jsonify({"status": "success", "message": f"File renamed successfully"})
             except Exception as e:
                 return jsonify({"status": "error", "message": f"Error renaming file: {str(e)}"})
