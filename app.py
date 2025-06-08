@@ -28,7 +28,7 @@ SESSION_EXPIRY = 60 * 60 * 24 * 30
 
 # Files to filter out (hidden files and system files) from env var
 default_filtered = ['.DS_Store', '.Thumbs.db', 'Thumbs.db', '._.Trashes', '.Spotlight-V100',
-                    '.fseventsd', '.Trashes', '@eaDir', 'desktop.ini', 'thumbs.db']
+                    '.fseventsd', '.Trashes', '@eaDir', 'desktop.ini', 'thumbs.db','#snapshot','#recycle','thumbnails']
 filtered_from_env = os.environ.get('FILTERED_FILES', '')
 if filtered_from_env:
     FILTERED_FILES = filtered_from_env.split(',')
@@ -40,7 +40,7 @@ hidden_from_env = os.environ.get('HIDDEN_EXTENSIONS', '')
 if hidden_from_env:
     HIDDEN_EXTENSIONS = hidden_from_env.split(',')
 else:
-    HIDDEN_EXTENSIONS = ['source','srt']
+    HIDDEN_EXTENSIONS = ['source','srt','db']
 
 # Private folders to hide from top level
 private_from_env = os.environ.get('PRIVATE_FOLDERS', '')

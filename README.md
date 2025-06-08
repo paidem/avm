@@ -70,13 +70,13 @@ Use the **portainer-stack-example.yaml** file to get things rolling.
 # Container info
 ## ENV Variables
 
-| Variable              | What It Does                                                  | Default                                                                                                    |
-|-----------------------|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| **ADMIN_PASSWORD**    | Password to access admin features                             | admin                                                                                                      |
-| **FILTERED_FILES**    | Files and folders to skip                                     | .DS_Store,.Thumbs.db,Thumbs.db,._.Trashes,.Spotlight-V100,.fseventsd,.Trashes,@eaDir,desktop.ini,thumbs.db |
-| **HIDDEN_EXTENSIONS** | Don't want to see these file extensions                       | source,srt                                                                                                 |
-| **PRIVATE_FOLDERS**   | Folders only visible in admin mode                            | Personal                                                                                                   |
-| **REDIS_HOST**        | Optional redis host. If specified - will be used for sessions | n/a                                                                                                        |  
+| Variable              | What It Does                                                  | Default                                                                                                                                   |
+|-----------------------|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **ADMIN_PASSWORD**    | Password to access admin features                             | admin                                                                                                                                     |
+| **FILTERED_FILES**    | Files and folders to skip                                     | .DS_Store,.Thumbs.db,Thumbs.db,._.Trashes,.Spotlight-V100,.fseventsd,.Trashes,@eaDir,desktop.ini,thumbs.db,#snapshot,#recycle,thumbnails  |
+| **HIDDEN_EXTENSIONS** | Don't want to see these file extensions                       | source,srt,db                                                                                                                             |
+| **PRIVATE_FOLDERS**   | Folders only visible in admin mode                            | Personal                                                                                                                                  |
+| **REDIS_HOST**        | Optional redis host. If specified - will be used for sessions | n/a                                                                                                                                       |  
 
 ## Where Stuff Goes in the Container
 
