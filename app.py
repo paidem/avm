@@ -240,8 +240,21 @@ def get_source_info(file_path):
 
 
 def get_thumbnail_path(file_path, abs_path, is_video=True):
-    """Generate a thumbnail path for a video or image file"""
-    file_hash = hashlib.md5(file_path.encode()).hexdigest()
+    """Generate a thumbnail path for a video or image file based on filename and filesize"""
+    # Extract just the filename from the path
+    filename = os.path.basename(file_path)
+
+    # Get file size
+    try:
+        file_size = os.path.getsize(abs_path)
+    except Exception as e:
+        print(f"Error getting file size: {e}")
+        file_size = 0
+
+    # Create a hash based on filename and file size
+    hash_input = f"{filename}_{file_size}".encode()
+    file_hash = hashlib.md5(hash_input).hexdigest()
+
     thumbnail_dir = os.path.join(thumbnails_base_dir, file_hash[:2])
     os.makedirs(thumbnail_dir, exist_ok=True)
     thumbnail_path = os.path.join(thumbnail_dir, f"{file_hash}.jpg")
@@ -253,11 +266,11 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
             if is_video:
                 # Extract metadata to decide how we get thumbnail - extract or generate
                 ffprobe_cmd = ['ffprobe',
-                       '-v', 'quiet',
-                       '-print_format', 'json',
-                       '-show_format',
-                       '-show_streams',
-                       abs_path]
+                               '-v', 'quiet',
+                               '-print_format', 'json',
+                               '-show_format',
+                               '-show_streams',
+                               abs_path]
 
                 # Execute the command and capture output
                 ffprobe_result = subprocess.run(ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -269,11 +282,11 @@ def get_thumbnail_path(file_path, abs_path, is_video=True):
                 nb_streams = ffprobe_data['format']['nb_streams']
 
                 # DJI O3/O4 (and maybe many others) have 1280x720 thumbnail embedded as the last stream with single frame
-                if nb_streams > 3 and ffprobe_data['streams'][nb_streams-1]['disposition']['attached_pic'] == 1:
+                if nb_streams > 3 and ffprobe_data['streams'][nb_streams - 1]['disposition']['attached_pic'] == 1:
                     cmd = [
                         'ffmpeg', '-i', abs_path,
-                        '-map', '0:{}'.format(nb_streams-1),
-                        '-frames:v','1',
+                        '-map', '0:{}'.format(nb_streams - 1),
+                        '-frames:v', '1',
                         thumbnail_path
                     ]
                     action = "Extracted"
