@@ -244,8 +244,20 @@ def generate_all_thumbnails(full_path):
         for filename in filenames_all:
             extension = os.path.splitext(filename)[1].lower()
             if extension in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
-                print(dirpath + "/" + filename)
-                get_thumbnail_path(filename, dirpath + "/" + filename, is_video=True)
+                block = False
+
+                # Check for files which are directly in blocked files/folders
+                if os.path.basename(dirpath) in FILTERED_FILES:
+                    continue
+
+                # Check for when video files is deeper id filtered folder
+                for filtered_file in FILTERED_FILES:
+                    if dirpath.find("/" + filtered_file + "/") >= 0:
+                        block = True
+
+                if not block:
+                    print(dirpath + "/" + filename)
+                    get_thumbnail_path(filename, dirpath + "/" + filename, is_video=True)
 
 def get_thumbnail_path(file_path, abs_path, is_video=True):
     """Generate a thumbnail path for a video or image file based on filename and filesize"""
