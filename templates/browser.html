@@ -22,14 +22,14 @@
                             <div class="auth-status">
                                 {% if is_authenticated %}
                                 <span class="auth-badge logged-in">
-                                    <i class="fas fa-user-shield"></i> Admin
+                                    <i class="fas fa-user-shield"></i> {{ username }} (admin)
                                 </span>
                                 <a href="#" onclick="logoutUser(); return false;" title="Log out">
                                     <i class="fas fa-sign-out-alt"></i>
                                 </a>
                                 {% else %}
                                 <span class="auth-badge viewer">
-                                    <i class="fas fa-eye"></i> Viewer
+                                    <i class="fas fa-eye"></i> {{ username }} (view-only)
                                 </span>
                                 <a href="#" onclick="showLoginModal(); return false;" title="Log in">
                                     <i class="fas fa-sign-in-alt"></i>

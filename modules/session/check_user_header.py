@@ -12,3 +12,11 @@ def check_header_auth():
         if (header_user in admin_users):
            return True
     return False
+
+def get_header_auth_username():
+    ###Check if current user from header is authenticated"""
+    forwarded_user_header_name = os.environ.get('USERNAME_HEADER',None)
+    if forwarded_user_header_name:
+        header_user = request.headers.get(forwarded_user_header_name, None)
+        return header_user
+    return None

@@ -12,6 +12,8 @@ import time
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, abort, send_file, Response, redirect, url_for
 
+from modules.session.check_user_header import check_header_auth, get_header_auth_username
+
 app = Flask(__name__, static_folder='static')
 # Set a secret key for session management
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
@@ -414,8 +416,17 @@ def browse(subpath=''):
     if not os.path.realpath(full_path).startswith(os.path.realpath(base_dir)):
         abort(403)
 
-    # Check if user is authenticated
+    # Check if user is admin
     is_authenticated = check_auth()
+
+    # Get username from forwarderd header
+    username = get_header_auth_username()
+
+    if (is_authenticated and username is None):
+        username = "Admin"
+    if (not is_authenticated and username is None):
+        username = "Guest"
+
 
     items = []
     try:
@@ -517,6 +528,7 @@ def browse(subpath=''):
                            current_path=subpath,
                            breadcrumbs=breadcrumbs,
                            is_authenticated=is_authenticated,
+                           username=username,
                            prev_dir=prev_dir,
                            next_dir=next_dir)
 
