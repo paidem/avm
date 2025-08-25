@@ -778,6 +778,42 @@ def execute_command():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+@app.route('/headers')
+def show_headers():
+    # Get all headers
+    headers_dict = dict(request.headers)
+
+    # Return JSON by default, HTML if requested
+    if request.headers.get('Accept', '').startswith('text/html'):
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Request Headers</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+            </style>
+        </head>
+        <body>
+            <h1>Request Headers</h1>
+            <table>
+                <tr><th>Header Name</th><th>Value</th></tr>
+        """
+        for name, value in headers_dict.items():
+            html += f"<tr><td>{name}</td><td>{value}</td></tr>"
+        html += """
+            </table>
+        </body>
+        </html>
+        """
+        return html
+    else:
+        return jsonify(headers_dict)
+
 # Generate all thumbnails on start
 generate_all_thumbnails(base_dir)
 
