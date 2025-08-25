@@ -5,7 +5,7 @@ import os
 import uuid
 from flask import request, make_response, jsonify
 
-
+from modules.session.check_user_header import check_header_auth
 
 # Redis connection
 redis_host = os.environ.get('REDIS_HOST', '')
@@ -14,6 +14,9 @@ redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 SESSION_EXPIRY = 86400
 
 def check_auth():
+    if check_header_auth():
+        return True
+
     """Check if the current user is authenticated"""
     session_id = request.cookies.get('session_id')
     if not session_id:

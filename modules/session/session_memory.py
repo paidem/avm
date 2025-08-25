@@ -1,7 +1,10 @@
 import json
+import os
 import time
 import uuid
 from flask import request, make_response, jsonify
+
+from modules.session.check_user_header import check_header_auth
 
 # Session storage - simple in-memory dict
 active_sessions = {}
@@ -9,6 +12,9 @@ active_sessions = {}
 SESSION_EXPIRY = 86400
 
 def check_auth():
+    if check_header_auth():
+        return True
+
     """Check if the current user is authenticated"""
     session_id = request.cookies.get('session_id')
     if session_id and session_id in active_sessions:
