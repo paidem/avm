@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.0
+    volumes:
+      - /volume2/footage/avm/google/google.json:/google.json:ro
+    environment: 
+      OAUTH2_PROXY_CLIENT_ID: "xxxxxxxxx.apps.googleusercontent.com" # google oauth client id
+      OAUTH2_PROXY_CLIENT_SECRET: "xxxxxxxxxxxxxxx" # google oauth client secret
+      OAUTH2_PROXY_COOKIE_SECRET: "LQ6kV1RMm3VwvS9ZXDEg0SUSjgMFQnFciHrM2etIXKY=" # random generated
+      OAUTH2_PROXY_REDIRECT_URL: "/oauth2/callback"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_PROVIDER: "google" # google is default., but I like to be explicit
+      OAUTH2_PROXY_SESSION_COOKIE_MINIMAL: "True" # If not set we need to use Redis, because cookie with inserted JWT is > 4kb
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "True"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "True"
+
+  nginx:
+    image: nginx:alpine
+    labels:
+      com.webstation.type: "python"
+    volumes:
+      - /volume2/footage/avm/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /volume2/footage:/media:ro
+      - /volume2/footage/avm/thumbnails:/thumbnails:ro
+    ports:
+      - "7778:80"
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Vilniuse
+  app:
+    image: paidem/avm:0.0.15
+    volumes:
+      - /volume2/footage:/media
+      - /volume2/footage/avm/thumbnails:/app/static/thumbnails
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Vilnius
+      - REDIS_HOST=redis
+      - ADMIN_PASSWORD=Action!787
+      - FILTERED_FILES="avm,.DS_Store,.Thumbs.db,Thumbs.db,.Trashes,.Spotlight-V100,.fseventsd,.Trashes,@eaDir,desktop.ini,thumbs.db,#snapshot,#recycle,thumbnails,redis_data,resize.log"
+      - HIDDEN_EXTENSIONS=source,srt,dng,log,db
+      - ADMIN_USERS=put-your-gmail-here@gmail.com,another-admin@gmail.com # Comma separated list of emails which have admin permissions automatically
+      - USERNAME_HEADER=X-Email # Header name containing username (email), corresponds to """proxy_set_header X-Email $email;""" line in nginx.conf
+    command: gunicorn --bind 0.0.0.0:5000 --timeout 30 --workers 4 --threads 4 app:app
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - /volume2/footage/avm/redis_data:/data
+    restart: always
