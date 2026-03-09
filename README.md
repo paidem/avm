@@ -1,6 +1,10 @@
 # Action Video Manager
 
-Welcome to Action Video Manager (AVM) — tool for managing drone and action cam footage, especially when it's stored on a Network Attached Storage (NAS) with docker support. 
+**This project is deprecated.** It has been rewritten from scratch with another stack (React + FastAPI) and is now maintained as [**AVM Neo**](https://github.com/paidem/avm-neo). The new version includes all original features plus bookmarks with video screenshots, tag-based filtering, dark mode, OAuth2 support, and more. Please use AVM Neo for all new deployments.
+
+---
+
+Welcome to Action Video Manager (AVM) — tool for managing drone and action cam footage, especially when it's stored on a Network Attached Storage (NAS) with docker support.
 
 This project is all about making your (my, actually) life easier and solving some of those issues with storing and merging your videos.
 
